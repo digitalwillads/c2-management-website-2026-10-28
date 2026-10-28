@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>C2 Management · The SEO work on your website, and what needs your OK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0b0b;--card:#171717;--ink:#f5f5f5;--muted:#a3a3a3;--brand:#737373;--accent:#9ca3af;--bad:#f87171;--good:#4ade80;--line:#2e2e2e;--plain:color-mix(in srgb,var(--muted) 42%,color-mix(in srgb,var(--accent) 40%,var(--bg)));--soft:color-mix(in srgb,var(--ink) 60%,var(--muted))}
+/* The report look (the Mokomoko recovery deck, 2026-10-02). The colors come from the client's brand as :root
+   variables, written by render.rs above this file: --bg --card --ink --muted --brand --accent --bad --good --line,
+   and two mixed from them: --plain (a quiet bar or dot) and --soft (body text a little lighter than the ink).
+
+   Two layouts:
+   - The stage (a laptop or larger): one 1280 x 720 slide at a time, scaled to fit the window, moved by keys, clicks,
+     and swipes. The stage is never scaled below 0.85, so the smallest text (16.5 px) reads at 14 px or more.
+   - The page (a phone, a tablet, a short window): every slide is a full-width section, one under the other, read by
+     scrolling. Each section animates in when it scrolls into view. Charts switch to their phone drawing.
+   The page layout's media query is the same in deck.js (PAGE): change both together. It is for screens only: a print
+   is always the stage's slides, one a page. */
+
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,sans-serif;overflow:hidden}
+p,li{text-wrap:pretty}
+/* Short blocks wrap balanced, so no line ends with one word alone (Will: no orphan words, 2026-09-15). */
+.tile b,.tile span,.fixes b,.fixes span,.cap,.stats span,.lead{text-wrap:balance}
+h1,h2{text-wrap:balance}
+.stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:center}
+section{position:absolute;inset:0;padding:64px 100px;display:flex;flex-direction:column;gap:18px;opacity:0;pointer-events:none;transition:opacity .5s}
+section.active{opacity:1;pointer-events:auto}
+.kicker{font-size:16.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--brand)}
+h1{font-size:58px;line-height:1.08;font-weight:800;letter-spacing:-.02em;max-width:900px}
+h2{font-size:42px;line-height:1.12;font-weight:800;letter-spacing:-.02em}
+.lead{font-size:21px;line-height:1.45;color:var(--soft);max-width:1000px}
+.cap{font-size:16.5px;color:var(--muted);margin-top:6px}
+.title{justify-content:center;gap:26px}
+.title .logo{height:96px;width:auto;max-width:320px;object-fit:contain;border-radius:22px;align-self:flex-start}
+.sub{font-size:20px;color:var(--muted)}
+.anim{opacity:0;transform:translateY(18px)}
+.active .anim{animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:var(--d,0s)}
+@keyframes rise{to{opacity:1;transform:none}}
+
+/* Charts: inline SVG. Each chart is drawn twice: .big for the stage, .phone (a narrow drawing with bigger labels)
+   for the page layout. A tone class sets --c, the color its bars, line, and dots take. */
+.t-plain{--c:var(--plain)} .t-bad{--c:var(--bad)} .t-good{--c:var(--good)} .t-brand{--c:var(--brand)} .t-accent{--c:var(--accent)}
+.chart{width:100%;height:auto;overflow:visible;display:block}
+.chart.phone{display:none}
+.chart .bar{fill:var(--c);transform-box:fill-box;transform-origin:bottom;transform:scaleY(0)}
+.active .chart .bar{animation:grow .5s ease-out forwards;animation-delay:calc(.35s + var(--i)*6ms)}
+@keyframes grow{to{transform:scaleY(1)}}
+.chart .axis{font-size:14px;fill:var(--muted)}
+.chart .axis.halo{paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
+.chart .val{font-size:15px;font-weight:700;fill:var(--ink)}
+.chart .rowlbl{font-size:16px;fill:var(--ink)}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .mark{stroke:var(--ink);stroke-dasharray:4 4;stroke-width:1.5}
+.chart .note{font-size:14px;font-weight:600;fill:var(--ink)}
+.chart .line{fill:none;stroke:var(--c);stroke-width:3;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1}
+.active .chart .line{animation:draw 2.2s ease-in-out .4s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.chart .hit{fill:transparent;cursor:crosshair}
+.chart .hov{fill:var(--c);stroke:#fff;stroke-width:3;opacity:0;pointer-events:none;transition:opacity .15s}
+.chart .hovline{stroke:var(--ink);stroke-width:1;opacity:0;pointer-events:none}
+.chart.hovering .hovline{opacity:.35} .chart.hovering .hov.on{opacity:1}
+.chart .wdot{fill:var(--c);opacity:0}
+.chart .wval{font-size:15px;font-weight:700;fill:var(--ink);opacity:0}
+.active .chart .wdot,.active .chart .wval{animation:fade .3s ease-out forwards;animation-delay:calc(.5s + var(--i)*110ms)}
+@keyframes fade{to{opacity:1}}
+.chart .hbar{fill:var(--c);transform-box:fill-box;transform-origin:left;transform:scaleX(0)}
+.active .chart .hbar{animation:growx .9s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:calc(.5s + var(--i)*40ms)}
+@keyframes growx{to{transform:scaleX(1)}}
+.chart.small{max-width:820px}
+.chart.phone .axis,.chart.phone .note,.chart.phone .val,.chart.phone .wval{font-size:13px}
+.chart.phone .rowlbl{font-size:14px} .chart.phone .line{stroke-width:2.5}
+.tip{position:fixed;z-index:9;pointer-events:none;background:var(--ink);color:#fff;font-size:14px;font-weight:600;padding:8px 12px;border-radius:8px;white-space:nowrap;opacity:0;transform:translate(-50%,calc(-100% - 14px));transition:opacity .12s}
+.tip.on{opacity:1}
+
+/* Views of one chart with a toggle (Daily / Weekly). */
+.views{position:relative}
+.views .v{display:none} .views .v.on{display:block}
+.toggle{position:absolute;right:0;top:-58px;display:flex;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px;z-index:2}
+.toggle button{font:600 16.5px Inter,system-ui,sans-serif;color:var(--muted);background:none;border:0;border-radius:999px;padding:8px 18px;cursor:pointer}
+.toggle button.on{background:var(--brand);color:#fff}
+
+.stats{display:flex;align-items:center;gap:28px}
+.stats div{display:flex;flex-direction:column}
+.stats em{font-style:normal;font-size:52px;font-weight:800;letter-spacing:-.02em}
+.stats span{font-size:16.5px;color:var(--muted)}
+.stats .arrow{font-size:40px;color:var(--muted)}
+.bad,.bad em,.bad b{color:var(--bad)} .good,.good em,.good b{color:var(--good)}
+.brandtone,.brandtone em,.brandtone b{color:var(--brand)} .accenttone,.accenttone em,.accenttone b{color:var(--accent)}
+p.good,p.bad{font-size:19px;font-weight:600}
+.legend{white-space:nowrap}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin:0 4px 0 10px;vertical-align:-1px;background:var(--c)}
+
+/* A chart with a short list beside it. */
+.split{display:grid;grid-template-columns:3fr 1fr;gap:36px;align-items:end}
+.months{display:flex;flex-direction:column;gap:8px}
+.months .top{margin:0 0 4px}
+.months div{display:flex;justify-content:space-between;align-items:baseline;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 16px}
+.months span{color:var(--muted);font-size:16.5px} .months b{font-size:30px;font-weight:800}
+
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:6px}
+.tile{--d:0s;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px;min-height:170px}
+.tile b{font-size:19px} .tile span{font-size:16.5px;line-height:1.4;color:var(--soft)}
+.ck{width:30px;height:30px;flex:none;border-radius:50%;background:var(--good);padding:5px}
+.ck path{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24}
+.active .ck path{animation:tick .5s ease-out forwards;animation-delay:calc(var(--d) + .3s)}
+@keyframes tick{to{stroke-dashoffset:0}}
+
+/* A section's opening slide (the client's question before its answers): the words in the middle, a little bigger. */
+.divider{justify-content:center}
+.divider h2{font-size:48px;max-width:1000px}
+.divider .lead{font-size:23px}
+
+/* A table: a list the reader checks item by item (the negatives a plan adds). Its text stays at 16.5 px, so it reads at
+   14 px on the smallest stage. */
+.list{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:16.5px;line-height:1.25}
+.list th,.list td{padding:3px 16px;text-align:left;vertical-align:top;border-top:1px solid var(--line)}
+.list thead th{border-top:0;font-weight:600;color:var(--muted)}
+.list td{color:var(--soft)}
+.list td:first-child{color:var(--ink);font-weight:600;white-space:nowrap}
+.list .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.list tr.group th{background:color-mix(in srgb,var(--brand) 9%,var(--card));color:var(--brand);font-weight:700}
+.list tr.bad td{color:var(--bad)} .list tr.good td{color:var(--good)}
+
+/* Search result mock-ups. */
+.serps{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:8px}
+.serp{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 26px;display:flex;flex-direction:column;gap:14px}
+.serp .q{border:1px solid #dadce0;border-radius:24px;padding:10px 20px;font-size:18px;color:#202124}
+.serp ol{padding-left:22px;display:flex;flex-direction:column;gap:10px}
+.serp li b{display:block;font-size:17px;color:#1a0dab;font-weight:500}
+.serp li span{font-size:16.5px;color:var(--muted)}
+.serp li.us b{color:var(--good);font-weight:700}
+
+/* Numbered steps. */
+.fixes{list-style:none;padding:0;display:flex;flex-direction:column;gap:14px;margin-top:6px}
+.fixes li{display:flex;gap:18px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 22px}
+.fixes i{font-style:normal;font-size:17px;flex:none;width:36px;height:36px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700}
+.fixes li>div{flex:1}
+.fixes b{display:block;font-size:20px} .fixes span{font-size:16.5px;color:var(--soft);line-height:1.4}
+.fixes .when{font-style:normal;flex:none;font-size:16.5px;font-weight:600;color:var(--brand);align-self:center}
+
+nav{position:fixed;left:0;right:0;bottom:0;height:4px;background:var(--line)}
+nav i{display:block;height:100%;background:var(--brand);transition:width .4s}
+.count{position:fixed;right:18px;bottom:12px;font-size:14px;color:var(--muted)}
+.hint{position:fixed;left:18px;bottom:12px;font-size:14px;color:var(--muted)}
+
+/* The page layout: phones, tablets, short windows. Keep in step with PAGE in deck.js. */
+@media screen and (max-width:1087px),screen and (max-height:611px){
+  html,body{height:auto;overflow-x:hidden;overflow-y:visible}
+  .stage{position:static;width:auto;height:auto;transform:none!important}
+  section{position:relative;inset:auto;padding:44px 16px;gap:16px;opacity:1;pointer-events:auto;border-bottom:1px solid var(--line)}
+  section:last-child{border-bottom:0;padding-bottom:64px}
+  section.title{min-height:72vh}
+  .kicker{font-size:14px}
+  h1{font-size:36px} h2{font-size:27px;line-height:1.18}
+  .lead{font-size:17px}
+  .cap{font-size:14px}
+  .sub{font-size:16px}
+  .title .logo{height:72px;border-radius:16px}
+  .chart.big{display:none} .chart.phone{display:block}
+  .chart.small{max-width:none}
+  .chart.phone{max-width:640px}
+  .views{display:flex;flex-direction:column}
+  .toggle{position:static;align-self:flex-start;margin-bottom:12px}
+  .toggle button{font-size:15px;min-height:44px;padding:10px 20px}
+  .stats{flex-direction:column;align-items:flex-start;gap:4px}
+  .stats em{font-size:40px}
+  .stats span{font-size:14px}
+  .stats .arrow{font-size:30px;line-height:1;transform:rotate(90deg);margin:2px 0 2px 8px}
+  .split{grid-template-columns:1fr;gap:20px}
+  .months span{font-size:15px} .months b{font-size:24px}
+  .tiles{grid-template-columns:1fr;gap:10px}
+  .tile{min-height:0;padding:16px}
+  .tile b{font-size:17px} .tile span{font-size:15px}
+  section.divider{min-height:60vh;justify-content:center}
+  .divider h2{font-size:30px}
+  .divider .lead{font-size:18px}
+  .list{font-size:14px}
+  .list th,.list td{padding:6px 10px}
+  .list td:first-child{white-space:normal}
+  .serps{grid-template-columns:1fr;gap:16px}
+  .serp{padding:18px}
+  .serp li span{font-size:14px}
+  .fixes li{padding:14px 16px;gap:14px}
+  .fixes i{width:32px;height:32px}
+  .fixes b{font-size:17px} .fixes span{font-size:15px}
+  .fixes li{flex-wrap:wrap}
+  .fixes .when{font-size:14px;align-self:flex-start;margin-left:46px;width:calc(100% - 46px)}
+  p.good,p.bad{font-size:17px}
+  nav,.hint,.count{display:none}
+  .tip{white-space:normal;max-width:calc(100vw - 32px);font-size:14px}
+}
+
+/* Printed: one slide per landscape page, every slide shown, nothing moving (the still rules below), no navigation. */
+@media print{
+  @page{size:1280px 720px;margin:0}
+  html,body{height:auto;overflow:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .stage{position:static;width:1280px;height:auto;transform:none!important}
+  section{position:relative;inset:auto;width:1280px;height:720px;opacity:1;overflow:hidden;background:var(--bg);break-after:page;break-inside:avoid}
+  section:last-child{break-after:auto}
+  nav,.hint,.count,.tip,.toggle{display:none!important}
+}
+
+.still *,.still *::before,.still *::after{animation:none!important;transition:none!important}
+.still .anim{opacity:1;transform:none}
+.still .chart .bar,.still .chart .hbar{transform:none}
+.still .chart .line{stroke-dashoffset:0}
+.still .chart .wdot,.still .chart .wval{opacity:1}
+.still .ck path{stroke-dashoffset:0}
+@media print{
+*,*::before,*::after{animation:none!important;transition:none!important}
+.anim{opacity:1;transform:none}
+.chart .bar,.chart .hbar{transform:none}
+.chart .line{stroke-dashoffset:0}
+.chart .wdot,.chart .wval{opacity:1}
+.ck path{stroke-dashoffset:0}
+}
+@media (prefers-reduced-motion:reduce){
+*,*::before,*::after{animation:none!important;transition:none!important}
+.anim{opacity:1;transform:none}
+.chart .bar,.chart .hbar{transform:none}
+.chart .line{stroke-dashoffset:0}
+.chart .wdot,.chart .wval{opacity:1}
+.ck path{stroke-dashoffset:0}
+}
+</style></head>
+<body><div class="stage">
+<section class="title">
+  <img class="anim logo" style="--d:.1s" src="data:image/png;base64,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" alt="C2 Management logo">
+  <h1 class="anim" style="--d:.25s">The SEO work on your website, and what needs your OK</h1>
+  <p class="anim sub" style="--d:.45s">C2 Management · Digital Will Ads · October 28, 2026</p>
+</section>
+<section>
+  <p class="kicker anim">Oct 28 · Done</p>
+  <h2 class="anim" style="--d:.1s">8 behind the scenes fixes from your list are live</h2>
+  <p class="lead anim" style="--d:0.20s">Nothing on the site looks different: this is the half of your Oct 21 list that Google and ChatGPT read, not what visitors see. Each fix has its own slide, with why it matters. The changes visitors would see wait for your OK at the end.</p>
+  <div class="tiles"><div class="tile anim" style="--d:0.25s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Search titles</b><span>All 21 pages and posts have their own title and description in Google.</span></div><div class="tile anim" style="--d:0.37s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Main headings</b><span>Every page marks its main heading, so Google knows what it is about.</span></div><div class="tile anim" style="--d:0.49s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Image descriptions</b><span>72 images say what they show, for Google and for screen readers.</span></div><div class="tile anim" style="--d:0.61s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Business details</b><span>Code on every page tells Google and ChatGPT who C2 is and what it offers.</span></div><div class="tile anim" style="--d:0.73s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Broken pages</b><span>10 old addresses go to the right page instead of the homepage.</span></div><div class="tile anim" style="--d:0.85s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Lighter pages</b><span>Your photo and the contact background are 90% lighter, and 2 slow files are gone.</span></div><div class="tile anim" style="--d:0.97s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Site map</b><span>Google read the site&#39;s full page list on Oct 28, with 0 errors.</span></div><div class="tile anim" style="--d:1.09s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Updates</b><span>The site&#39;s 6 pending updates are installed, after a full backup.</span></div></div>
+</section>
+<section>
+  <p class="kicker anim">Why it matters</p>
+  <h2 class="anim" style="--d:.1s">Google showed your site 1,051 times from Sep 28 to Oct 25, and 37 people clicked</h2>
+  <p class="lead anim" style="--d:0.20s">Google names the search behind 18 of those clicks: 15 searched C2&#39;s name, and 3 searched a service, like &quot;music marketing agency los angeles&quot;. So today Google mostly sends people who already know you. The fixes in this report give Google what it needs to show the site when artists search for those services. We&#39;ll compare the 4 weeks after the work with these 4 weeks in early December.</p>
+  <div class="anim" style="--d:0.30s"><svg viewBox="0 0 760 196" class="chart big small" role="img"><text class="rowlbl" x="0" y="22.0">Searched C2&#39;s name</text><rect class="hbar t-plain" style="--i:0" x="0" y="32.0" width="505.3" height="18" rx="3"/><text class="val" x="515.3" y="47.0">15 clicks</text><text class="rowlbl" x="0" y="86.0">Searched a service</text><rect class="hbar t-good" style="--i:6" x="0" y="96.0" width="101.1" height="18" rx="3"/><text class="val" x="111.1" y="111.0">3 clicks</text><text class="rowlbl" x="0" y="150.0">Search Google doesn&#39;t name</text><rect class="hbar t-accent" style="--i:12" x="0" y="160.0" width="640.0" height="18" rx="3"/><text class="val" x="650.0" y="175.0">19 clicks</text></svg><svg viewBox="0 0 360 178" class="chart phone" role="img"><text class="rowlbl" x="0" y="18.0">Searched C2&#39;s name</text><rect class="hbar t-plain" style="--i:0" x="0" y="26.0" width="181.6" height="16" rx="3"/><text class="val" x="189.6" y="39.0">15 clicks</text><text class="rowlbl" x="0" y="76.0">Searched a service</text><rect class="hbar t-good" style="--i:6" x="0" y="84.0" width="36.3" height="16" rx="3"/><text class="val" x="44.3" y="97.0">3 clicks</text><text class="rowlbl" x="0" y="134.0">Search Google doesn&#39;t name</text><rect class="hbar t-accent" style="--i:12" x="0" y="142.0" width="230.0" height="16" rx="3"/><text class="val" x="238.0" y="155.0">19 clicks</text></svg><p class="cap">Clicks from Google search, Sep 28 to Oct 25, by what people searched</p></div>
+</section>
+<section>
+  <p class="kicker anim">Search titles and descriptions</p>
+  <h2 class="anim" style="--d:.1s">All 21 pages and posts now have their own title and description in Google</h2>
+  <p class="lead anim" style="--d:0.20s">The title is the blue link people click in Google, and the description is the line under it. Here is your homepage before and now. Google read the new version on Oct 28.</p>
+  <div class="serps"><div class="serp anim" style="--d:0.30s"><div class="q">ctwomanagement</div><ol><li><b>C2 Management</b><span>ctwomanagement.com · Before: no description, so Google picked words from the page.</span></li></ol></div><div class="serp anim" style="--d:0.50s"><div class="q">ctwomanagement</div><ol><li class="us"><b>Music Marketing Agency in Los Angeles &amp; NYC | C2 Management</b><span>ctwomanagement.com · Premium music marketing and PR for artists and teams in Los Angeles and New York: release rollouts, press, TikTok creators and streaming growth.</span></li></ol></div></div>
+</section>
+<section>
+  <p class="kicker anim">Search titles · more pages</p>
+  <h2 class="anim" style="--d:.1s">Each page&#39;s title now says what it offers</h2>
+  <p class="lead anim" style="--d:0.20s">The other 20 pages and posts got the same treatment. Here are 4 examples.</p>
+  <div class="anim" style="--d:0.30s"><table class="list"><thead><tr><th>Page</th><th>Before</th><th>Now</th></tr></thead><tbody><tr><td>Contact</td><td>Contact Us – C2 Management</td><td>Apply to Work With C2 Management | Music Marketing</td></tr><tr><td>Public Relations</td><td>Public Relations – C2 Management</td><td>Music PR Agency for Artists in LA &amp; NYC | C2 Management</td></tr><tr><td>DSP Visibility</td><td>DSP Visibility &amp; Streaming Growth – C2 Management</td><td>DSP Pitching &amp; Streaming Growth for Artists | C2 Management</td></tr><tr><td>TikTok</td><td>TikTok Influencer Campaigns – C2 Management</td><td>TikTok Influencer Marketing for Music | C2 Management</td></tr></tbody></table><p class="cap">Titles the site gives Google, before and after Oct 28. Google shows a new title once it rereads the page.</p></div>
+</section>
+<section>
+  <p class="kicker anim">Main headings</p>
+  <h2 class="anim" style="--d:.1s">Every page and post now marks its main heading for Google</h2>
+  <p class="lead anim" style="--d:0.20s">Google reads a page&#39;s main heading to learn what the page is about, and most pages had none marked. We marked the headline each of the 21 pages and posts already shows, so nothing looks different.</p>
+  <div class="tiles"><div class="tile anim" style="--d:0.25s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Home</b><span>&quot;Managing Marketing Campaigns That Move Music Forward&quot;</span></div><div class="tile anim" style="--d:0.37s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>About</b><span>&quot;About C2 Management&quot;</span></div><div class="tile anim" style="--d:0.49s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Service pages</b><span>Each service&#39;s name, like &quot;Public Relations&quot;</span></div><div class="tile anim" style="--d:0.61s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Blog posts</b><span>Each post&#39;s title, like &quot;Klaudia Kudelko Makes Paris Debut&quot;</span></div></div>
+</section>
+<section>
+  <p class="kicker anim">Image descriptions</p>
+  <h2 class="anim" style="--d:.1s">72 images now tell Google what they show</h2>
+  <p class="lead anim" style="--d:0.20s">Google can&#39;t see a picture, so it reads its description, and so do screen readers for blind visitors. Your press logos like Rolling Stone and Forbes, your photo, the artist photos and the campaign map now have one. 46 decorative shapes and icons stay blank on purpose, so Google skips them.</p>
+  <div class="tiles"><div class="tile anim" style="--d:0.25s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Press logos</b><span>&quot;Rolling Stone logo&quot;, &quot;Forbes logo&quot;, &quot;BBC logo&quot;</span></div><div class="tile anim" style="--d:0.37s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Your photo</b><span>&quot;Waylon Barnes, CEO of C2 Management&quot;</span></div><div class="tile anim" style="--d:0.49s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Artist photos</b><span>&quot;Nicole Zuraitis holding a Grammy award&quot;</span></div><div class="tile anim" style="--d:0.61s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>The map</b><span>&quot;World map of C2 Management campaign regions&quot;</span></div></div>
+</section>
+<section>
+  <p class="kicker anim">Google and ChatGPT</p>
+  <h2 class="anim" style="--d:.1s">Every page now tells Google and ChatGPT who C2 is, in code they read</h2>
+  <p class="lead anim" style="--d:0.20s">The code names C2 Management, its logo, its Instagram, its 7 services and its Los Angeles and New York service area. There is no phone number or address in it, as you asked. A short summary file that AI tools read is live too.</p>
+  <div class="tiles"><div class="tile anim" style="--d:0.25s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Who</b><span>C2 Management, LLC, with its logo and Instagram.</span></div><div class="tile anim" style="--d:0.37s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>What</b><span>Its services, from public relations to tour promotion.</span></div><div class="tile anim" style="--d:0.49s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Where</b><span>Los Angeles and New York.</span></div><div class="tile anim" style="--d:0.61s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Left out</b><span>Your phone number and address, as you asked.</span></div></div>
+</section>
+<section>
+  <p class="kicker anim">Broken pages</p>
+  <h2 class="anim" style="--d:.1s">10 old addresses now go to the right page</h2>
+  <p class="lead anim" style="--d:0.20s">A setting sent every missing page to your homepage, and Google flagged those pages. We removed it. Old links now land where they should, and made-up addresses get a proper not found page.</p>
+  <div class="anim" style="--d:0.30s"><table class="list"><thead><tr><th>Old address</th><th>Now goes to</th></tr></thead><tbody><tr><td>/about-us/</td><td>About</td></tr><tr><td>/social-media/</td><td>Social Media Growth &amp; Advertising</td></tr><tr><td>/streaming-growth/</td><td>DSP Visibility &amp; Streaming Growth</td></tr><tr><td>/tik-tok-campaigns/</td><td>TikTok Influencer Campaigns</td></tr><tr><td>/consultation-project-management/</td><td>High-Level Consulting &amp; Project Management</td></tr><tr><td>/artist-development/</td><td>High-Level Consulting &amp; Project Management</td></tr><tr><td>4 older press posts</td><td>The blog, until you decide whether to bring them back</td></tr></tbody></table><p class="cap">Where each old address goes since Oct 28.</p></div>
+</section>
+<section>
+  <p class="kicker anim">Lighter pages</p>
+  <h2 class="anim" style="--d:.1s">Your photo and the contact page background are 90% lighter, with the same look</h2>
+  <p class="lead anim" style="--d:0.20s">Your photo went from 539 KB to 36 KB, and the contact background from 901 KB to 113 KB. Every page also stopped loading 2 style files that held it up. The biggest load left is tracking code, which we will trim only in a way that keeps your lead tracking right.</p>
+  <div class="anim" style="--d:0.30s"><svg viewBox="0 0 760 260" class="chart big small" role="img"><text class="rowlbl" x="0" y="22.0">Your photo, before</text><rect class="hbar t-plain" style="--i:0" x="0" y="32.0" width="382.9" height="18" rx="3"/><text class="val" x="392.9" y="47.0">539 KB</text><text class="rowlbl" x="0" y="86.0">Your photo, now</text><rect class="hbar t-good" style="--i:6" x="0" y="96.0" width="25.6" height="18" rx="3"/><text class="val" x="35.6" y="111.0">36 KB</text><text class="rowlbl" x="0" y="150.0">Contact background, before</text><rect class="hbar t-plain" style="--i:12" x="0" y="160.0" width="640.0" height="18" rx="3"/><text class="val" x="650.0" y="175.0">901 KB</text><text class="rowlbl" x="0" y="214.0">Contact background, now</text><rect class="hbar t-good" style="--i:18" x="0" y="224.0" width="80.3" height="18" rx="3"/><text class="val" x="90.3" y="239.0">113 KB</text></svg><svg viewBox="0 0 360 236" class="chart phone" role="img"><text class="rowlbl" x="0" y="18.0">Your photo, before</text><rect class="hbar t-plain" style="--i:0" x="0" y="26.0" width="137.6" height="16" rx="3"/><text class="val" x="145.6" y="39.0">539 KB</text><text class="rowlbl" x="0" y="76.0">Your photo, now</text><rect class="hbar t-good" style="--i:6" x="0" y="84.0" width="9.2" height="16" rx="3"/><text class="val" x="17.2" y="97.0">36 KB</text><text class="rowlbl" x="0" y="134.0">Contact background, before</text><rect class="hbar t-plain" style="--i:12" x="0" y="142.0" width="230.0" height="16" rx="3"/><text class="val" x="238.0" y="155.0">901 KB</text><text class="rowlbl" x="0" y="192.0">Contact background, now</text><rect class="hbar t-good" style="--i:18" x="0" y="200.0" width="28.8" height="16" rx="3"/><text class="val" x="36.8" y="213.0">113 KB</text></svg><p class="cap">Download size of each image, before and after Oct 28</p></div>
+</section>
+<section>
+  <p class="kicker anim">Google&#39;s own check</p>
+  <h2 class="anim" style="--d:.1s">Google&#39;s SEO check now gives the homepage 100 points out of 100, up from 92 points</h2>
+  <p class="lead anim" style="--d:0.20s">It is the SEO part of Google&#39;s PageSpeed test: it checks the basics Google needs, like a title, a description and links it can follow. Google also read the site&#39;s page list on Oct 28: 22 pages and 89 images, with 0 errors.</p>
+  <div class="stats anim" style="--d:0.30s"><div><em>92 points</em><span>Out of 100, on Oct 28 before the work</span></div><div class="arrow">→</div><div class="good"><em>100 points</em><span>Out of 100, on Oct 28 after, in all 4 test runs</span></div></div>
+</section>
+<section>
+  <p class="kicker anim">Upkeep</p>
+  <h2 class="anim" style="--d:.1s">The site&#39;s 6 pending updates are installed</h2>
+  <p class="lead anim" style="--d:0.20s">They were 5 plugins and the theme. We backed up the whole site first, then installed them one at a time. Then we checked 12 pages on a laptop and a phone: nothing moved, every tracking tag loads, and the contact form is unchanged.</p>
+  <div class="tiles"><div class="tile anim" style="--d:0.25s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Cookie banner</b><span>CookieYes, which asks visitors about cookies.</span></div><div class="tile anim" style="--d:0.37s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Tag Manager link</b><span>GTM4WP, which loads your tracking tags.</span></div><div class="tile anim" style="--d:0.49s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Google Site Kit</b><span>Your Google Analytics link.</span></div><div class="tile anim" style="--d:0.61s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Backups</b><span>Duplicator, which made the backup.</span></div><div class="tile anim" style="--d:0.73s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Theme</b><span>Astra, the site&#39;s base design.</span></div><div class="tile anim" style="--d:0.85s"><svg viewBox="0 0 24 24" class="ck" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><b>Theme add-ons</b><span>Astra Pro, its extra features.</span></div></div>
+</section>
+<section class="divider">
+  <p class="kicker anim">For your OK</p>
+  <h2 class="anim" style="--d:.1s">Which of the 7 changes visitors would see do you approve?</h2>
+  <p class="lead anim" style="--d:0.20s">Nothing visitors see changes until you say yes. Each change has a number, so you can reply with the ones you approve.</p>
+</section>
+<section>
+  <p class="kicker anim">For your OK · 1 to 3</p>
+  <h2 class="anim" style="--d:.1s">3 sentences would say you work in Los Angeles and New York</h2>
+  <p class="lead anim" style="--d:0.20s">Your Oct 21 list asked for Los Angeles and New York on the site. These words help Google match C2 to searches in those cities.</p>
+  <div class="anim" style="--d:0.30s"><table class="list"><thead><tr><th>Where</th><th>Now</th><th>With your OK</th></tr></thead><tbody><tr><td>1. Homepage, under the headline</td><td>...for artists and teams ready to invest in strategic, high-impact growth</td><td>...for artists and teams in Los Angeles and New York, ready to invest in strategic, high-impact growth</td></tr><tr><td>2. Homepage, What We Do</td><td>...campaigns for established artists and teams.</td><td>...campaigns for established artists and teams in Los Angeles, New York and around the world.</td></tr><tr><td>3. About page, first sentence</td><td>...for artists, record labels, and professional teams.</td><td>...for artists, record labels, and professional teams in Los Angeles, New York and worldwide.</td></tr></tbody></table><p class="cap">The words on the live pages on Oct 28, and the same sentences with your OK.</p></div>
+</section>
+<section>
+  <p class="kicker anim">For your OK · 4, 5 and 7</p>
+  <h2 class="anim" style="--d:.1s">Small wording fixes on the contact and Social Media pages</h2>
+  <p class="lead anim" style="--d:0.20s">The last one is optional. You said on the Sep 2 call that you can&#39;t work with AI artists, and this line could save you some bad inquiries.</p>
+  <div class="anim" style="--d:0.30s"><table class="list"><thead><tr><th>Where</th><th>Now</th><th>With your OK</th></tr></thead><tbody><tr><td>4. Contact page, big headline</td><td>CONTACT PAGE</td><td>WORK WITH US</td></tr><tr><td>5. Social Media page, spelling</td><td>Beyond posting, we craft a storytelling startegy</td><td>Beyond posting, we craft a storytelling strategy</td></tr><tr><td>7. Contact page, under Application Criteria (optional)</td><td>Nothing</td><td>We do not work with AI-generated artists.</td></tr></tbody></table><p class="cap">The words on the live pages on Oct 28, and with your OK.</p></div>
+</section>
+<section>
+  <p class="kicker anim">For your OK · 6</p>
+  <h2 class="anim" style="--d:.1s">We drafted the privacy policy page the site lacks</h2>
+  <p class="lead anim" style="--d:0.20s">Google and Meta ask sites that run their ad tags to tell visitors about them, and a privacy policy is where that goes. It would be a new page, linked from the footer and the cookie banner. Your lawyer should check the full text before it goes live.</p>
+  <div class="anim" style="--d:0.30s"><table class="list"><thead><tr><th>Part</th><th>What it says</th></tr></thead><tbody><tr><td>What visitors give C2</td><td>The application form&#39;s answers, used to review the application and reply.</td></tr><tr><td>What the site collects</td><td>Cookies and tags from Google, Meta, ChatGPT ads, Hotjar, reCAPTCHA and CookieYes.</td></tr><tr><td>Sharing</td><td>C2 never sells personal information. Only the site&#39;s service providers, the ad platforms and the law get it.</td></tr><tr><td>Visitors&#39; choices</td><td>The cookie banner, and asking C2 to see, correct or delete their information.</td></tr><tr><td>How long C2 keeps it</td><td>Your answer: how long you keep applications.</td></tr><tr><td>Privacy contact</td><td>Your answer: the email for privacy requests. No address, as you asked.</td></tr></tbody></table><p class="cap">The main parts of the draft, written from what the live site collected on Oct 28.</p></div>
+</section>
+<section>
+  <p class="kicker anim">For your OK · questions</p>
+  <h2 class="anim" style="--d:.1s">We need 3 quick answers from you</h2>
+  <div class="anim" style="--d:0.20s"><table class="list"><thead><tr><th>Question</th><th>Why we ask</th></tr></thead><tbody><tr><td>Do you want your older press posts back?</td><td>4 were deleted in the site rebuild. They are in the web archive, so we can restore them.</td></tr><tr><td>Which other official profiles should Google know?</td><td>The site links only to Instagram. Send any TikTok, YouTube, LinkedIn or Spotify links.</td></tr><tr><td>Which email gets privacy requests, and how long do you keep applications?</td><td>The privacy policy needs both.</td></tr></tbody></table></div>
+</section>
+<section>
+  <p class="kicker anim">What&#39;s next</p>
+  <h2 class="anim" style="--d:.1s">We make the changes you approve as soon as you reply</h2>
+  <ol class="fixes"><li class="anim" style="--d:0.20s"><i>1</i><div><b>Your OK</b><span>Reply with the numbers you approve and your 3 answers, or we go through them on our next call.</span></div></li><li class="anim" style="--d:0.35s"><i>2</i><div><b>We make them</b><span>We make the changes you approve and send you each page to check.</span></div></li><li class="anim" style="--d:0.50s"><i>3</i><div><b>Before and after in Google</b><span>We compare the 4 weeks after the work with the 4 weeks before.</span></div><em class="when">Dec 2</em></li></ol>
+  <p class="lead note anim" style="--d:0.65s">Your Google and Meta ads are in a separate report.</p>
+</section>
+</div><nav><i></i></nav><div class="hint">← → or click to move</div><div class="count"></div><div class="tip"></div>
+<script>
+/* The deck's moves (the Mokomoko recovery deck, 2026-10-02).
+   - The stage (a laptop): one slide at a time, scaled to fit; arrow keys, a click (right two thirds: next, left
+     third: back), or a swipe move it. The progress bar, the counter, and the address (#3) follow.
+   - The page (a phone; the same media query as deck.css): every slide is shown, one under the other. A slide
+     animates in once it scrolls into view. Clicks and swipes do not move anything; #3 scrolls to slide 3.
+   - Charts: a hover (or a tap) shows the slot's tip, a line at the slot, and the point's dot. A toggle switches the
+     views of one chart and draws the new view in again. */
+const S = [...document.querySelectorAll('section')], stage = document.querySelector('.stage');
+const bar = document.querySelector('nav i'), cnt = document.querySelector('.count'), tip = document.querySelector('.tip');
+const PAGE = matchMedia('screen and (max-width:1087px), screen and (max-height:611px)');
+let n = 0;
+const seen = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) { e.target.classList.add('active'); seen.unobserve(e.target); }
+}), { rootMargin: '0px 0px -8% 0px' });
+function fit() {
+  if (PAGE.matches) { stage.style.transform = ''; return; }
+  const s = Math.min(innerWidth / 1280, innerHeight / 720);
+  stage.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+function go(i) {
+  n = Math.max(0, Math.min(S.length - 1, i));
+  if (PAGE.matches) { if (n > 0) S[n].scrollIntoView({ block: 'start' }); return; }
+  S.forEach((s, j) => s.classList.toggle('active', j === n));
+  bar.style.width = ((n + 1) / S.length * 100) + '%';
+  cnt.textContent = (n + 1) + ' / ' + S.length;
+  history.replaceState(null, '', '#' + (n + 1));
+}
+function layout() {
+  fit();
+  if (PAGE.matches) S.forEach(s => { if (!s.classList.contains('active')) seen.observe(s); });
+  else { seen.disconnect(); go(n); }
+}
+addEventListener('keydown', e => {
+  if (PAGE.matches) return;
+  if (['ArrowRight', 'PageDown', ' '].includes(e.key)) go(n + 1);
+  if (['ArrowLeft', 'PageUp'].includes(e.key)) go(n - 1);
+  if (e.key === 'Home') go(0);
+  if (e.key === 'End') go(S.length - 1);
+});
+document.querySelectorAll('.toggle button').forEach(b => b.addEventListener('click', e => {
+  e.stopPropagation();
+  const w = b.closest('.views');
+  w.querySelectorAll('.toggle button').forEach(x => x.classList.toggle('on', x === b));
+  w.querySelectorAll('.v').forEach(v => {
+    const on = v.dataset.k === b.dataset.v;
+    if (on && !v.classList.contains('on')) { const c = v.cloneNode(true); c.classList.add('on'); v.replaceWith(c); }
+    else if (!on) v.classList.remove('on');
+  });
+}));
+addEventListener('click', e => {
+  if (PAGE.matches || e.target.closest('a,button,.toggle')) return;
+  go(e.clientX > innerWidth / 3 ? n + 1 : n - 1);
+});
+let x0 = null;
+addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+addEventListener('touchend', e => {
+  if (x0 === null || PAGE.matches) { x0 = null; return; }
+  const dx = e.changedTouches[0].clientX - x0;
+  if (Math.abs(dx) > 40) go(dx < 0 ? n + 1 : n - 1);
+  x0 = null;
+});
+function hover(e) {
+  const h = e.target.closest && e.target.closest('[data-tip]');
+  document.querySelectorAll('.chart.hovering').forEach(c => { if (!h || !c.contains(h)) c.classList.remove('hovering'); });
+  if (!h) { tip.classList.remove('on'); return; }
+  const svg = h.ownerSVGElement, line = svg.querySelector('.hovline'), dot = svg.querySelector('.hov');
+  const x = +h.getAttribute('x') + (+h.getAttribute('width')) / 2;
+  svg.classList.add('hovering');
+  line.setAttribute('x1', x); line.setAttribute('x2', x);
+  if (h.dataset.cx) { dot.setAttribute('cx', h.dataset.cx); dot.setAttribute('cy', h.dataset.cy); dot.classList.add('on'); }
+  else dot.classList.remove('on');
+  tip.textContent = h.dataset.tip;
+  const half = Math.min(tip.offsetWidth / 2 + 8, innerWidth / 2);
+  tip.style.left = Math.min(Math.max(e.clientX, half), innerWidth - half) + 'px';
+  tip.style.top = e.clientY + 'px';
+  tip.classList.add('on');
+}
+addEventListener('pointermove', hover);
+addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') hover(e); });
+addEventListener('resize', fit);
+PAGE.addEventListener('change', layout);
+n = Math.max(0, Math.min(S.length - 1, (parseInt(location.hash.slice(1)) || 1) - 1));
+if (PAGE.matches) { S.forEach(s => s.classList.remove('active')); }
+layout();
+if (PAGE.matches) go(n);
+/* The font changes the page's height once it is in: scroll to the slide again. */
+if (document.fonts) document.fonts.ready.then(() => { if (PAGE.matches) go(n); });
+</script></body></html>
